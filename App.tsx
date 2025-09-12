@@ -1,13 +1,42 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import NutritionalAnalysis from './components/NutritionalAnalysis';
 import BodyComposition from './components/BodyComposition';
-import { Leaf, BarChart3 } from 'lucide-react';
+import { Leaf, BarChart3, DownloadCloud } from 'lucide-react';
 
 type Tab = 'analysis' | 'composition';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('analysis');
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+  
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = () => {
+    if (!installPrompt) {
+      return;
+    }
+    installPrompt.prompt();
+    installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the A2HS prompt');
+      } else {
+        console.log('User dismissed the A2HS prompt');
+      }
+      setInstallPrompt(null);
+    });
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -37,12 +66,25 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <header className="bg-white shadow-md">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-4xl font-bold text-center">
-            <span className="text-primary">Nutri</span>
-            <span className="text-dark">Scan</span>
-          </h1>
-          <p className="text-center text-gray-500 mt-1">Sua saúde em foco.</p>
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-center relative">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold">
+              <span className="text-primary">Nutri</span>
+              <span className="text-dark">Scan</span>
+            </h1>
+            <p className="text-gray-500 mt-1">Sua saúde em foco.</p>
+          </div>
+          {installPrompt && (
+            <button
+              onClick={handleInstallClick}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white font-bold py-2 px-3 rounded-lg flex items-center gap-2 hover:bg-green-600 transition-colors"
+              aria-label="Instalar aplicativo"
+              title="Instalar NutriScan"
+            >
+              <DownloadCloud size={20} />
+              <span className="hidden sm:inline">Instalar</span>
+            </button>
+          )}
         </div>
       </header>
 

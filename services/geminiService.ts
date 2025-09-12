@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NutritionalAnalysisData, Nutrient } from '../types';
 
-// API Key provided by the user.
-const ai = new GoogleGenAI({ apiKey: "AIzaSyCtu-1v1Gx_DUXP0seYnKDOpf8vpcAOryM" });
+// Initialize the Google AI client with the API key from environment variables.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const nutrientSchema = {
     type: Type.OBJECT,

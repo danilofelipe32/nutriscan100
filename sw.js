@@ -1,7 +1,10 @@
-const CACHE_NAME = 'nutriscan-cache-v1';
+const CACHE_NAME = 'nutriscan-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
   '/index.tsx',
   '/App.tsx',
   '/components/NutritionalAnalysis.tsx',
@@ -16,19 +19,14 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
-
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
+        // Use addAll with a catch for each item to prevent install failure if one asset is missing.
+        // It's better to let the fetch handler cache things lazily.
+        const cachePromises = urlsToCache.map(url => {
+            return cache.add(url).catch(err => {
+                console.warn(`Failed to cache ${url}:`, err);
+            });
+        });
+        return Promise.all(cachePromises);
       })
   );
 });
@@ -44,6 +42,36 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    })
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  // For API calls, always use network.
+  if (event.request.url.includes('generativelanguage.googleapis.com')) {
+    return event.respondWith(fetch(event.request));
+  }
+  
+  // For other requests (app assets, CDNs), use cache-first with dynamic caching.
+  event.respondWith(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cachedResponse = await cache.match(event.request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      try {
+        const networkResponse = await fetch(event.request);
+        // Cache successful GET requests.
+        if (event.request.method === 'GET' && networkResponse && networkResponse.status === 200) {
+          cache.put(event.request, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (error) {
+        console.error('Fetch failed, resource not in cache:', event.request.url);
+        // This will result in a browser error page if offline.
+        throw error;
+      }
     })
   );
 });
