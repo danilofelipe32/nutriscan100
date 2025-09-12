@@ -1,0 +1,24 @@
+{
+  "short_name": "NutriScan",
+  "name": "NutriScan",
+  "description": "A web application to analyze the nutritional content of meals from photos and evaluate body composition.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#f9fafb",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#28a745"
+}

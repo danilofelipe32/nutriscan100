@@ -1,12 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NutritionalAnalysisData, Nutrient } from '../types';
 
-// IMPORTANT: Hardcoding API keys is not a recommended practice for production applications.
-// This is done here as per the user's specific request.
-// In a real-world scenario, this should be an environment variable.
-const API_KEY = "AIzaSyCtu-1v1Gx_DUXP0seYnKDOpf8vpcAOryM";
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// API Key provided by the user.
+const ai = new GoogleGenAI({ apiKey: "AIzaSyCtu-1v1Gx_DUXP0seYnKDOpf8vpcAOryM" });
 
 const nutrientSchema = {
     type: Type.OBJECT,
