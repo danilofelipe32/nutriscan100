@@ -1,3 +1,9 @@
+export interface Nutrient {
+  name: string;
+  amount: string;
+  dailyValue: string;
+}
+
 export interface NutritionalAnalysisData {
   data: string;
   nomePrato: string;
@@ -10,6 +16,8 @@ export interface NutritionalAnalysisData {
   pros: string[];
   cons: string[];
   imageUrl: string; 
+  macronutrients: Nutrient[];
+  micronutrients: Nutrient[];
 }
 
 export enum Sex {

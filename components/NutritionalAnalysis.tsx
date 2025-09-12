@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Upload, Trash2, LoaderCircle, Flame, Beef, Wheat, Droplets, CheckCircle2, XCircle, Share2, Download, RefreshCcw } from 'lucide-react';
 import { analyzeMealImage } from '../services/geminiService';
-import { NutritionalAnalysisData } from '../types';
+import { NutritionalAnalysisData, Nutrient } from '../types';
 
 const fileToBase64 = (file: File): Promise<{base64: string, mimeType: string}> => {
   return new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ const HealthScoreDonut: React.FC<{ score: number }> = ({ score }) => {
       <div className="absolute flex flex-col items-center">
         <span className="text-4xl font-bold text-gray-800">{score.toFixed(0)}</span>
       </div>
-      <p className="text-xs text-gray-500 mt-2">(Baseado em uma porção de 100g)</p>
+      <p className="text-xs text-gray-500 mt-2">(Saúde geral do prato)</p>
     </div>
   );
 };
@@ -78,6 +78,43 @@ const ProsConsList: React.FC<{ title: string; items: string[]; isPro: boolean }>
   );
 };
 
+const NutrientTable: React.FC<{ title: string; nutrients: Nutrient[] }> = ({ title, nutrients }) => (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="bg-gray-50">
+          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 w-1/2">{title}</th>
+          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600">Quantidade</th>
+          <th scope="col" className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600">% VD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {nutrients.map((nutrient, index) => (
+          <tr key={index} className="border-t border-gray-200">
+            <td className="px-4 py-2 font-medium text-gray-800">{nutrient.name}</td>
+            <td className="px-4 py-2 text-gray-600">{nutrient.amount}</td>
+            <td className="px-4 py-2 text-gray-600">{nutrient.dailyValue}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+);
+
+const NutritionalDetails: React.FC<{ analysis: NutritionalAnalysisData; onClose: () => void }> = ({ analysis, onClose }) => (
+  <div className="pt-6">
+    <div className="text-center mb-4">
+        <button onClick={onClose} className="text-primary text-sm font-semibold hover:underline">
+          Ocultar Detalhes Nutricionais
+        </button>
+    </div>
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <NutrientTable title="Macronutrientes" nutrients={analysis.macronutrients} />
+      {analysis.micronutrients && analysis.micronutrients.length > 0 && (
+         <NutrientTable title="Vitaminas e Minerais" nutrients={analysis.micronutrients} />
+      )}
+    </div>
+  </div>
+);
+
 
 const NutritionalAnalysis: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -85,6 +122,7 @@ const NutritionalAnalysis: React.FC = () => {
   const [history, setHistory] = useState<NutritionalAnalysisData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +146,7 @@ const NutritionalAnalysis: React.FC = () => {
     setAnalysis(null);
     setIsLoading(true);
     setError(null);
+    setShowDetails(false);
     
     try {
       const { base64, mimeType } = await fileToBase64(fileToAnalyze);
@@ -146,6 +185,7 @@ const NutritionalAnalysis: React.FC = () => {
     setImage(null);
     setAnalysis(null);
     setError(null);
+    setShowDetails(false);
   }
 
   const clearHistory = () => {
@@ -162,6 +202,7 @@ const NutritionalAnalysis: React.FC = () => {
   const handleViewHistoryItem = (itemToView: NutritionalAnalysisData) => {
     setAnalysis(itemToView);
     setImage(itemToView.imageUrl);
+    setShowDetails(false);
   };
 
 
@@ -228,18 +269,28 @@ const NutritionalAnalysis: React.FC = () => {
                 </div>
             </div>
 
-            <div className="border-t border-gray-200"></div>
+            {showDetails ? (
+              <NutritionalDetails analysis={analysis} onClose={() => setShowDetails(false)} />
+            ) : (
+              <div className="text-center pt-6">
+                <button onClick={() => setShowDetails(true)} className="text-primary font-semibold hover:underline">
+                  Ver Detalhes Nutricionais
+                </button>
+              </div>
+            )}
 
-            <div className="flex flex-col sm:flex-row gap-4">
-                <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
-                    <Share2 size={18}/> Compartilhar
-                </button>
-                <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
-                    <Download size={18}/> Baixar PDF
-                </button>
-                <button onClick={resetAnalysis} className="flex-1 bg-primary text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
-                    <RefreshCcw size={18}/> Analisar Outra Imagem
-                </button>
+            <div className="border-t border-gray-200 mt-6 pt-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
+                        <Share2 size={18}/> Compartilhar
+                    </button>
+                    <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
+                        <Download size={18}/> Baixar PDF
+                    </button>
+                    <button onClick={resetAnalysis} className="flex-1 bg-primary text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
+                        <RefreshCcw size={18}/> Analisar Outra Imagem
+                    </button>
+                </div>
             </div>
          </div>
       )}
