@@ -1,9 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NutritionalAnalysisData } from '../types';
 
-// Fix: Use environment variable for API key instead of hardcoding.
-// The API key must be obtained exclusively from the environment variable `process.env.API_KEY`.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// API key is hardcoded as requested to ensure functionality on Netlify without environment variables.
+const ai = new GoogleGenAI({ apiKey: "AIzaSyCtu-1v1Gx_DUXP0seYnKDOpf8vpcAOryM" });
 
 const nutrientInfoSchema = {
     type: Type.OBJECT,
