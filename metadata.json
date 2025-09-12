@@ -1,0 +1,7 @@
+{
+  "name": "NutriScan",
+  "description": "A web application to analyze the nutritional content of meals from photos and evaluate body composition.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
