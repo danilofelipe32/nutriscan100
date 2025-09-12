@@ -121,6 +121,7 @@ const NutritionalAnalysis: React.FC = () => {
 
       setAnalysis(newAnalysis);
 
+      // Save image with base64 for persistent history display
       const historyAnalysis = { ...newAnalysis, imageUrl: `data:${mimeType};base64,${base64}` };
       const updatedHistory = [historyAnalysis, ...history];
       setHistory(updatedHistory);
@@ -152,6 +153,18 @@ const NutritionalAnalysis: React.FC = () => {
     localStorage.removeItem('nutriScanAnalysisHistory');
   };
 
+  const handleDeleteItem = (indexToDelete: number) => {
+    const updatedHistory = history.filter((_, index) => index !== indexToDelete);
+    setHistory(updatedHistory);
+    localStorage.setItem('nutriScanAnalysisHistory', JSON.stringify(updatedHistory));
+  };
+
+  const handleViewHistoryItem = (itemToView: NutritionalAnalysisData) => {
+    setAnalysis(itemToView);
+    setImage(itemToView.imageUrl);
+  };
+
+
   return (
     <div className="space-y-8">
       {!image && !isLoading && (
@@ -162,7 +175,7 @@ const NutritionalAnalysis: React.FC = () => {
           <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleFileChange} className="hidden" />
           <div className="flex flex-col sm:flex-row gap-4">
             <button onClick={() => cameraInputRef.current?.click()} className="flex-1 bg-primary text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
-              <Camera size={20}/> Tirar Foto
+              <Camera size={20}/> Abrir Câmera
             </button>
             <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-gray-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-600 transition-colors">
               <Upload size={20}/> Enviar Foto
@@ -236,21 +249,35 @@ const NutritionalAnalysis: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-gray-800">Histórico de Análises</h3>
                 <button onClick={clearHistory} className="text-red-500 hover:text-red-700 flex items-center gap-1 text-sm">
-                    <Trash2 size={14}/> Limpar
+                    <Trash2 size={14}/> Limpar Tudo
                 </button>
             </div>
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {history.map((item, index) => (
-              <li key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-md">
+              <li 
+                key={index}
+                onClick={() => handleViewHistoryItem(item)}
+                className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100 hover:shadow-sm cursor-pointer"
+                >
                 <img src={item.imageUrl} alt={item.nomePrato} className="w-16 h-16 object-cover rounded-md"/>
                 <div className="flex-1">
-                  <p className="font-semibold">{item.nomePrato}</p>
+                  <p className="font-semibold text-gray-800">{item.nomePrato}</p>
                   <p className="text-sm text-gray-500">{new Date(item.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
                 </div>
                 <div className="text-right">
                     <p className="font-bold text-primary">{item.calorias.toFixed(0)} kcal</p>
                     <p className="text-sm text-gray-500">Nota: {item.notaSaude.toFixed(1)}</p>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteItem(index);
+                  }}
+                  className="p-2 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-500 transition-colors"
+                  aria-label={`Deletar análise de ${item.nomePrato}`}
+                >
+                  <Trash2 size={18} />
+                </button>
               </li>
             ))}
           </ul>
