@@ -57,6 +57,16 @@ const App: React.FC = () => {
 
       <footer className="text-center py-4 mt-8 text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} NutriScan. Todos os direitos reservados.</p>
+        <p className="mt-1">
+          <a
+            href="https://wa.me/5584999780963"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            Produzido por Danilo Arruda
+          </a>
+        </p>
       </footer>
     </div>
   );
