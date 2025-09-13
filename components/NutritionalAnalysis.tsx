@@ -3,6 +3,9 @@ import { Camera, Upload, Trash2, LoaderCircle, Flame, Beef, Wheat, Droplets, Che
 import { analyzeMealImage } from '../services/geminiService';
 import { NutritionalAnalysisData, Nutrient } from '../types';
 
+declare var jspdf: any;
+declare var html2canvas: any;
+
 const fileToBase64 = (file: File): Promise<{base64: string, mimeType: string}> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -121,10 +124,12 @@ const NutritionalAnalysis: React.FC = () => {
   const [analysis, setAnalysis] = useState<NutritionalAnalysisData | null>(null);
   const [history, setHistory] = useState<NutritionalAnalysisData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const analysisResultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
@@ -204,7 +209,65 @@ const NutritionalAnalysis: React.FC = () => {
     setImage(itemToView.imageUrl);
     setShowDetails(false);
   };
+  
+  const handleShare = async () => {
+    if (!analysis) return;
 
+    const shareData = {
+      title: `Análise Nutricional: ${analysis.nomePrato}`,
+      text: `Confira a análise do meu prato: ${analysis.nomePrato}!\n\n- Calorias: ${analysis.calorias.toFixed(0)} kcal\n- Nota de Saúde: ${analysis.notaSaude.toFixed(1)}/10\n\nAnalisado com NutriScan.`,
+      url: 'https://nutriscan100.netlify.app/',
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        console.log('Análise compartilhada com sucesso!');
+      } catch (error) {
+        console.error('Erro ao compartilhar:', error);
+      }
+    } else {
+      alert('A função de compartilhar não é suportada neste navegador. Tente copiar o link.');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!analysisResultRef.current || !analysis) return;
+
+    setIsDownloadingPdf(true);
+    try {
+      const canvas = await html2canvas(analysisResultRef.current, { scale: 2, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jspdf.jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageMargin = 10;
+      const effectivePdfWidth = pdfWidth - (pageMargin * 2);
+      const effectivePdfHeight = pdf.internal.pageSize.getHeight() - (pageMargin * 2);
+
+      const finalPdfHeight = (imgProps.height * effectivePdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'PNG', pageMargin, pageMargin, effectivePdfWidth, finalPdfHeight);
+      
+      const fileName = `analise_nutricional_${analysis.nomePrato.replace(/\s+/g, '_').toLowerCase()}.pdf`;
+      pdf.save(fileName);
+
+    } catch (error) {
+        console.error("Erro ao gerar PDF:", error);
+        setError("Não foi possível gerar o PDF. Tente novamente.");
+    } finally {
+        setIsDownloadingPdf(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -247,47 +310,65 @@ const NutritionalAnalysis: React.FC = () => {
 
       {analysis && !isLoading && (
          <div className="bg-white p-6 rounded-lg shadow-lg space-y-6 animate-fade-in">
-            <div>
-                <h2 className="text-3xl font-bold text-gray-800">{analysis.nomePrato}</h2>
-                <p className="text-gray-600 mt-1">{analysis.description}</p>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MacroCard icon={<Flame size={20} className="text-orange-500"/>} label="Calorias" value={`${analysis.calorias.toFixed(0)} kcal`} />
-                <MacroCard icon={<Beef size={20} className="text-red-500"/>} label="Proteínas" value={`${analysis.proteinas.toFixed(1)}g`} />
-                <MacroCard icon={<Wheat size={20} className="text-yellow-500"/>} label="Carboidratos" value={`${analysis.carboidratos.toFixed(1)}g`} />
-                <MacroCard icon={<Droplets size={20} className="text-blue-500"/>} label="Gorduras" value={`${analysis.gorduras.toFixed(1)}g`} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
-                <div className="flex justify-center items-center md:col-span-1">
-                    <HealthScoreDonut score={analysis.notaSaude} />
+            <div ref={analysisResultRef} className="space-y-6 bg-white">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-800">{analysis.nomePrato}</h2>
+                    <p className="text-gray-600 mt-1">{analysis.description}</p>
                 </div>
-                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                    <ProsConsList title="Prós" items={analysis.pros} isPro={true} />
-                    <ProsConsList title="Contras" items={analysis.cons} isPro={false} />
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <MacroCard icon={<Flame size={20} className="text-orange-500"/>} label="Calorias" value={`${analysis.calorias.toFixed(0)} kcal`} />
+                    <MacroCard icon={<Beef size={20} className="text-red-500"/>} label="Proteínas" value={`${analysis.proteinas.toFixed(1)}g`} />
+                    <MacroCard icon={<Wheat size={20} className="text-yellow-500"/>} label="Carboidratos" value={`${analysis.carboidratos.toFixed(1)}g`} />
+                    <MacroCard icon={<Droplets size={20} className="text-blue-500"/>} label="Gorduras" value={`${analysis.gorduras.toFixed(1)}g`} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4">
+                    <div className="flex justify-center items-center md:col-span-1">
+                        <HealthScoreDonut score={analysis.notaSaude} />
+                    </div>
+                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                        <ProsConsList title="Prós" items={analysis.pros} isPro={true} />
+                        <ProsConsList title="Contras" items={analysis.cons} isPro={false} />
+                    </div>
                 </div>
             </div>
 
             {showDetails ? (
               <NutritionalDetails analysis={analysis} onClose={() => setShowDetails(false)} />
             ) : (
-              <div className="text-center pt-6">
+              <div className="text-center pt-2">
                 <button onClick={() => setShowDetails(true)} className="text-primary font-semibold hover:underline">
                   Ver Detalhes Nutricionais
                 </button>
               </div>
             )}
 
-            <div className="border-t border-gray-200 mt-6 pt-6">
+            <div className="border-t border-gray-200 pt-6">
                 <div className="flex flex-col sm:flex-row gap-4">
-                    <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
+                    <button onClick={handleShare} className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
                         <Share2 size={18}/> Compartilhar
                     </button>
-                    <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300">
-                        <Download size={18}/> Baixar PDF
+                    <button 
+                        onClick={handleDownloadPdf}
+                        disabled={isDownloadingPdf}
+                        className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isDownloadingPdf ? (
+                            <>
+                                <LoaderCircle size={18} className="animate-spin" /> Baixando...
+                            </>
+                        ) : (
+                            <>
+                                <Download size={18}/> Baixar PDF
+                            </>
+                        )}
                     </button>
-                    <button onClick={resetAnalysis} className="flex-1 bg-primary text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
+                    <button 
+                        onClick={() => {
+                            resetAnalysis();
+                            fileInputRef.current?.click();
+                        }}
+                        className="flex-1 bg-primary text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
                         <RefreshCcw size={18}/> Analisar Outra Imagem
                     </button>
                 </div>
