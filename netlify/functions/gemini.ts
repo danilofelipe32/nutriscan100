@@ -1,12 +1,7 @@
+import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
 import { GoogleGenAI, Type } from "@google/genai";
-import { NutritionalAnalysisData } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("A variável de ambiente API_KEY não está configurada.");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+// Schemas copied from the original geminiService.ts to be used on the server-side.
 const nutrientSchema = {
     type: Type.OBJECT,
     properties: {
@@ -51,8 +46,27 @@ const analysisSchema = {
     required: ["nomePrato", "description", "calorias", "carboidratos", "proteinas", "gorduras", "notaSaude", "pros", "cons", "macronutrients", "micronutrients"],
 };
 
-export const analyzeMealImage = async (base64Image: string, mimeType: string): Promise<Omit<NutritionalAnalysisData, 'data' | 'imageUrl'>> => {
+
+const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+  }
+
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("API_KEY environment variable not set.");
+    return { statusCode: 500, body: JSON.stringify({ error: "Configuration error: API key is not set on the server." }) };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   try {
+    const { base64Image, mimeType } = JSON.parse(event.body || '{}');
+
+    if (!base64Image || !mimeType) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Missing 'base64Image' or 'mimeType' in the request body." }) };
+    }
+
     const imagePart = {
       inlineData: { data: base64Image, mimeType: mimeType },
     };
@@ -71,16 +85,20 @@ export const analyzeMealImage = async (base64Image: string, mimeType: string): P
     });
 
     const jsonText = response.text.trim();
-    const result = JSON.parse(jsonText);
-
-    if (!result || typeof result !== 'object') {
-        throw new Error("A resposta da API estava vazia ou em formato inválido.");
-    }
-
-    return result;
+    
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: jsonText,
+    };
 
   } catch (error: any) {
-    console.error("Erro ao chamar a API Gemini:", error);
-    throw new Error("Não foi possível analisar a imagem. Verifique sua conexão e tente novamente.");
+    console.error("Error calling Gemini API:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: `An internal server error occurred: ${error.message}` }),
+    };
   }
 };
+
+export { handler };
