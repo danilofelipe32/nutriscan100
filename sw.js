@@ -48,7 +48,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // For API calls, always use network.
-  if (event.request.url.includes('generativelanguage.googleapis.com')) {
+  if (event.request.url.includes('/.netlify/functions/')) {
     return event.respondWith(fetch(event.request));
   }
   
