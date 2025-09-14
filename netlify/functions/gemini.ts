@@ -52,12 +52,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("API_KEY environment variable not set.");
-    return { statusCode: 500, body: JSON.stringify({ error: "Configuration error: API key is not set on the server." }) };
-  }
-
+  const apiKey = "AIzaSyCtu-1v1Gx_DUXP0seYnKDOpf8vpcAOryM";
   const ai = new GoogleGenAI({ apiKey });
 
   try {

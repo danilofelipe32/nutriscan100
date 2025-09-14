@@ -1,11 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { NutritionalAnalysisData, BodyCompositionData } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("A variável de ambiente API_KEY não está configurada.");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = "AIzaSyCtu-1v1Gx_DUXP0seYnKDOpf8vpcAOryM";
+const ai = new GoogleGenAI({ apiKey });
 
 const nutrientSchema = {
     type: Type.OBJECT,
