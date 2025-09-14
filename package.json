@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "NutriScan Application",
   "scripts": {
+    "build": "echo 'Build successful'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
