@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, Trash2, LoaderCircle, Flame, Beef, Wheat, Droplets, CheckCircle2, XCircle, Share2, Download, RefreshCcw } from 'lucide-react';
-import { analyzeMealImage } from '../services/geminiService';
-import { NutritionalAnalysisData, Nutrient } from '../types';
+import { Camera, Upload, Trash2, LoaderCircle, Flame, Beef, Wheat, Droplets, CheckCircle2, XCircle, Share2, Download, RefreshCcw, Lightbulb, X } from 'lucide-react';
+import { analyzeMealImage, getHealthTips } from '../services/geminiService';
+import { NutritionalAnalysisData, Nutrient, BodyCompositionData } from '../types';
 
 declare var jspdf: any;
 declare var html2canvas: any;
@@ -127,6 +127,10 @@ const NutritionalAnalysis: React.FC = () => {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState<boolean>(false);
+  const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
+  const [tipsContent, setTipsContent] = useState('');
+  const [isTipsLoading, setIsTipsLoading] = useState(false);
+  const [tipsError, setTipsError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const analysisResultRef = useRef<HTMLDivElement>(null);
@@ -208,6 +212,26 @@ const NutritionalAnalysis: React.FC = () => {
     setAnalysis(itemToView);
     setImage(itemToView.imageUrl);
     setShowDetails(false);
+  };
+
+  const handleGenerateTips = async () => {
+    setIsTipsModalOpen(true);
+    setIsTipsLoading(true);
+    setTipsError(null);
+    setTipsContent('');
+
+    try {
+        const storedCompositionHistory = localStorage.getItem('nutriScanCompositionHistory');
+        const compositionHistory: BodyCompositionData[] = storedCompositionHistory ? JSON.parse(storedCompositionHistory) : [];
+        
+        const tips = await getHealthTips(history, compositionHistory);
+        setTipsContent(tips);
+
+    } catch (e: any) {
+        setTipsError(e.message || 'Ocorreu um erro ao gerar as dicas.');
+    } finally {
+        setIsTipsLoading(false);
+    }
   };
   
   const handleShare = async () => {
@@ -380,9 +404,18 @@ const NutritionalAnalysis: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-lg">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-gray-800">Histórico de Análises</h3>
-                <button onClick={clearHistory} className="text-red-500 hover:text-red-700 flex items-center gap-1 text-sm">
-                    <Trash2 size={14}/> Limpar Tudo
-                </button>
+                 <div className="flex items-center gap-2">
+                    <button 
+                        onClick={handleGenerateTips} 
+                        className="bg-yellow-400 text-gray-800 font-bold py-2 px-3 rounded-lg flex items-center gap-2 hover:bg-yellow-500 transition-colors text-sm"
+                        title="Gerar Dicas com IA"
+                    >
+                        <Lightbulb size={16}/> Dicas
+                    </button>
+                    <button onClick={clearHistory} className="text-red-500 hover:text-red-700 flex items-center gap-1 text-sm">
+                        <Trash2 size={14}/> Limpar Tudo
+                    </button>
+                </div>
             </div>
           <ul className="space-y-3">
             {history.map((item, index) => (
@@ -414,6 +447,59 @@ const NutritionalAnalysis: React.FC = () => {
             ))}
           </ul>
         </div>
+      )}
+
+      {isTipsModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="tips-modal-title">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg m-4 flex flex-col max-h-[90vh]">
+                  
+                  {/* Modal Header */}
+                  <div className="flex-shrink-0 p-6 pb-4 flex justify-between items-center border-b border-gray-200">
+                      <h3 id="tips-modal-title" className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                          <Lightbulb className="text-yellow-500" />
+                          Dicas Saudáveis Personalizadas
+                      </h3>
+                      <button
+                          onClick={() => setIsTipsModalOpen(false)}
+                          className="p-2 -mr-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+                          aria-label="Fechar modal de dicas"
+                      >
+                          <X size={24} />
+                      </button>
+                  </div>
+
+                  {/* Modal Body (Scrollable) */}
+                  <div className="flex-grow overflow-y-auto">
+                      <div className="p-6">
+                          {isTipsLoading ? (
+                              <div className="text-center py-8">
+                                  <LoaderCircle className="animate-spin mx-auto text-primary" size={40} />
+                                  <p className="mt-4 text-gray-600">Aguarde, nossa IA está preparando dicas especiais para você...</p>
+                              </div>
+                          ) : tipsError ? (
+                              <div className="text-center py-8">
+                                  <XCircle className="mx-auto text-red-500" size={40} />
+                                  <p className="mt-4 text-red-600">{tipsError}</p>
+                              </div>
+                          ) : (
+                              <div className="text-gray-700 space-y-4" style={{ whiteSpace: 'pre-wrap' }}>
+                                  {tipsContent}
+                              </div>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex-shrink-0 p-6 pt-4 flex justify-end items-center border-t border-gray-200">
+                      <button
+                          onClick={() => setIsTipsModalOpen(false)}
+                          className="bg-primary text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                      >
+                          Fechar
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );
